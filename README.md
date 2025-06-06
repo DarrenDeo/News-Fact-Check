@@ -158,6 +158,4 @@ Proyek ini memiliki alur kerja dari persiapan data hingga menjalankan aplikasi w
 -   Anda sekarang dapat memasukkan link berita untuk dianalisis.
 
 ---
-## Lisensi
 
-Proyek ini dilisensikan di bawah Lisensi MIT.
