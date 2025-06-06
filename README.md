@@ -66,20 +66,21 @@ Skrip `evaluate.py` secara otomatis menghasilkan beberapa visualisasi untuk memb
 
 ## Struktur Proyek
 NEWS-FACK-CHECK/
-├── app.py # Backend server Flask
-├── datasets/ # Folder untuk semua dataset (mentah)
+├── app.py                  # Backend server Flask
+├── datasets/               # Folder untuk semua dataset (mentah)
 ├── frontend/
-│ └── index.html # Antarmuka pengguna (UI) aplikasi
-├── models/ # (Folder ini diabaikan oleh Git, dibuat saat training)
-├── results/ # Hasil evaluasi, diagram, dan laporan
-├── src/ # Folder untuk semua skrip Python
-│ ├── preprocess.py
-│ ├── train_bert.py
-│ ├── ... (skrip training lainnya) ...
-│ └── evaluate.py
-├── .gitignore # Mengabaikan file/folder yang tidak perlu di-upload
-├── requirements.txt # Daftar pustaka Python yang diperlukan
-└── README.md # File ini
+│   └── index.html          # Antarmuka pengguna (UI) aplikasi
+├── models/                 # (Folder ini diabaikan oleh Git, dibuat saat training)
+├── results/                # Hasil evaluasi, diagram, dan laporan
+├── src/                    # Folder untuk semua skrip Python
+│   ├── preprocess.py
+│   ├── train_bert.py
+│   ├── ... (skrip training lainnya) ...
+│   └── evaluate.py
+├── .gitignore              # Mengabaikan file/folder yang tidak perlu di-upload
+├── requirements.txt        # Daftar pustaka Python yang diperlukan
+└── README.md               # File ini
+
 
 ## Arsitektur Model AI
 
