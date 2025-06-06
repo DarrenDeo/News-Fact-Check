@@ -1,0 +1,8 @@
+              precision    recall  f1-score   support
+
+   Fakta (0)       0.94      0.95      0.95      9886
+    Hoax (1)       0.93      0.91      0.92      6747
+
+    accuracy                           0.94     16633
+   macro avg       0.93      0.93      0.93     16633
+weighted avg       0.94      0.94      0.94     16633

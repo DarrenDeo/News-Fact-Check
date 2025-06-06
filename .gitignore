@@ -1,0 +1,25 @@
+# Python virtual environment
+venv/
+
+# File cache Python
+__pycache__/
+*.pyc
+
+# File-file yang dibuat oleh IDE
+.vscode/
+
+# Dataset mentah yang besar. Jangan unggah ini ke GitHub.
+datasets/**/*.csv
+datasets/**/*.xlsx
+datasets/**/*.jsonl
+
+# Abaikan juga folder yang dibuat otomatis
+datasets/merged_for_processing/
+datasets/processed/
+
+# Folder model yang dilatih (UKURAN SANGAT BESAR)
+models/
+
+# File sistem operasi
+.DS_Store
+Thumbs.db
