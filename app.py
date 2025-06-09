@@ -1,4 +1,3 @@
-# app.py (Versi Final dengan Pemuatan Model yang Benar)
 from flask import Flask, request, jsonify, send_from_directory
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
 import torch
@@ -60,44 +59,50 @@ def load_all_models():
     print("*" * 50)
     print("Memuat semua model AI dari persistent storage...")
     for model_name, model_path in MODEL_CONFIG.items():
+        print(f"\n[LOAD] Mencoba memuat model: {model_name}")
         if os.path.exists(model_path):
-            print(f"  > Memuat {model_name} dari {model_path}...")
             try:
+                print(f"  [LOAD] Path ditemukan: {model_path}. Memuat tokenizer...")
                 tokenizer = AutoTokenizer.from_pretrained(model_path)
+                print(f"  [LOAD] Tokenizer {model_name} dimuat. Memuat model...")
                 model = AutoModelForSequenceClassification.from_pretrained(model_path)
+                print(f"  [LOAD] Model {model_name} dimuat. Memindahkan ke CPU dan set ke eval mode...")
                 model.to(device)
                 model.eval()
                 models_cache[model_name] = (model, tokenizer)
-                print(f"  > {model_name} berhasil dikonfigurasi dan dipindahkan ke CPU.")
-            except Exception as e: print(f"  ERROR saat memuat model {model_name}: {e}")
+                print(f"  [SUCCESS] {model_name} berhasil dikonfigurasi.")
+            except Exception as e: 
+                print(f"  [ERROR] Gagal saat memuat model {model_name}: {e}")
+                traceback.print_exc()
         else:
-            print(f"  PERINGATAN: Direktori model untuk {model_name} tidak ditemukan di {model_path}")
-    print("Semua model yang tersedia telah dimuat.")
+            print(f"  [WARNING] Direktori model untuk {model_name} tidak ditemukan di {model_path}")
+    print("\nProses pemuatan semua model selesai.")
+    print(f"Total model yang berhasil dimuat: {len(models_cache)}")
     print("*" * 50)
 
 
 @app.route('/predict', methods=['POST'])
 def predict():
-    print("\n[LOG] Menerima permintaan di /predict")
+    print("\n[PREDICT] Menerima permintaan di /predict")
     try:
         data = request.get_json()
         url_input = data.get('url', '')
-        print(f"[LOG] URL yang diterima: {url_input}")
+        print(f"[PREDICT] URL yang diterima: {url_input}")
         if not url_input or not url_input.strip(): return jsonify({"error": "URL tidak boleh kosong"}), 400
 
-        print("[LOG] Memulai proses scraping...")
+        print("[PREDICT] Memulai proses scraping...")
         text_from_url, error_message = scrape_news_from_url(url_input)
         if error_message: return jsonify({"error": error_message}), 400
-        print("[LOG] Scraping berhasil.")
+        print("[PREDICT] Scraping berhasil.")
         
         cleaned_text = clean_text_for_prediction(text_from_url)
-        print("[LOG] Teks berhasil dibersihkan.")
+        print("[PREDICT] Teks berhasil dibersihkan.")
         
         all_predictions = {}
         individual_preds_list = []
 
         for model_name, (model, tokenizer) in models_cache.items():
-            print(f"[LOG] Melakukan prediksi dengan {model_name}...")
+            print(f"  [PREDICT] Melakukan prediksi dengan {model_name}...")
             try:
                 inputs = tokenizer.encode_plus(cleaned_text, add_special_tokens=True, max_length=256, padding='max_length', truncation=True, return_attention_mask=True, return_tensors='pt')
                 input_ids = inputs['input_ids'].to(device)
@@ -109,21 +114,21 @@ def predict():
                 predicted_class = "Hoax" if predicted_class_idx.item() == 1 else "Fakta"
                 individual_preds_list.append(predicted_class_idx.item())
                 all_predictions[model_name] = {"prediction": predicted_class, "confidence": f"{confidence.item():.2%}"}
-                print(f"[LOG] Prediksi {model_name} berhasil: {predicted_class}")
+                print(f"  [PREDICT] Prediksi {model_name} berhasil: {predicted_class}")
             except Exception as e:
-                print(f"[ERROR] Prediksi dengan {model_name} gagal: {e}")
+                print(f"  [ERROR] Prediksi dengan {model_name} gagal: {e}")
                 all_predictions[model_name] = {"prediction": "Error", "confidence": "N/A"}
 
         if individual_preds_list:
-            print("[LOG] Melakukan ensemble voting...")
+            print("[PREDICT] Melakukan ensemble voting...")
             ensemble_vote_result = mode(np.array(individual_preds_list))
             final_prediction_idx = ensemble_vote_result.mode[0] if isinstance(ensemble_vote_result.mode, np.ndarray) else ensemble_vote_result.mode
             final_prediction = "Hoax" if final_prediction_idx == 1 else "Fakta"
             agreement = np.mean([p == final_prediction_idx for p in individual_preds_list])
             all_predictions["Bagging (Ensemble)"] = {"prediction": final_prediction, "confidence": f"{agreement:.2%}"}
-            print("[LOG] Ensemble voting selesai.")
+            print("[PREDICT] Ensemble voting selesai.")
 
-        print("[LOG] Mengirimkan hasil ke frontend.")
+        print("[PREDICT] Mengirimkan hasil ke frontend.")
         return jsonify(all_predictions)
     except Exception as e:
         print(f"[FATAL ERROR] Terjadi error tak terduga di rute /predict:")
@@ -133,8 +138,7 @@ def predict():
 @app.route('/')
 def serve_index(): return send_from_directory('frontend', 'index.html')
 
-# --- PERBAIKAN UTAMA DI SINI ---
-# Panggil fungsi load_all_models() di sini, di luar blok if __name__ == '__main__'
+# --- Pemuatan Model Dipanggil di Sini ---
 # Ini akan dieksekusi saat Gunicorn mengimpor file app.py
 load_all_models()
 
