@@ -2,10 +2,16 @@
 import os
 from huggingface_hub import snapshot_download
 
-# Skrip ini akan dipanggil oleh setup.sh untuk mengunduh semua model
-# menggunakan pustaka Python, yang seringkali lebih stabil.
+# --- Perbaikan Kunci: Atur HF_HOME secara eksplisit ---
+# Ini memberitahu pustaka huggingface untuk menggunakan /data/.cache sebagai
+# folder cache, yang berada di dalam persistent storage yang bisa kita tulis.
+cache_dir = "/data/.cache"
+os.environ['HF_HOME'] = cache_dir
+os.makedirs(cache_dir, exist_ok=True)
+print(f"Hugging Face home/cache directory set to: {os.environ['HF_HOME']}")
 
-# Path ke persistent storage di Hugging Face Spaces
+
+# Path utama untuk menyimpan model final
 MODEL_STORAGE_PATH = "/data/models"
 
 # Daftar model yang akan diunduh
@@ -27,18 +33,26 @@ def main():
         # Tentukan direktori tujuan untuk model ini
         local_dir_path = os.path.join(MODEL_STORAGE_PATH, model_key)
         
+        # Periksa apakah model sudah ada untuk menghemat waktu saat restart
+        # Kita periksa keberadaan config.json sebagai penanda
+        if os.path.exists(os.path.join(local_dir_path, "config.json")):
+             print(f"---> Model {model_key.upper()} sudah ada. Melewati unduhan.")
+             continue
+
         try:
-            # Unduh semua file dari repositori model ke direktori lokal
+            # Fungsi snapshot_download akan secara otomatis menggunakan
+            # variabel lingkungan HF_HOME yang telah kita atur untuk cache.
             snapshot_download(
                 repo_id=model_id,
                 local_dir=local_dir_path,
-                local_dir_use_symlinks=False, # Penting untuk lingkungan Docker
-                resume_download=True # Akan melanjutkan unduhan jika terputus
+                local_dir_use_symlinks=False,
+                resume_download=True
             )
             print(f"---> {model_key.upper()} berhasil diunduh ke {local_dir_path}")
         except Exception as e:
             print(f"[ERROR] Gagal mengunduh {model_key.upper()}: {e}")
-            # Kita bisa memilih untuk melanjutkan atau berhenti. Mari kita lanjutkan.
+            # Kita biarkan skrip berlanjut jika satu model gagal,
+            # agar tidak menghentikan seluruh proses build.
             pass
 
     print("\n==================================================")
