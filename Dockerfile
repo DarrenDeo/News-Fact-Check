@@ -1,3 +1,5 @@
+# Dockerfile
+
 # 1. Gunakan base image Python yang stabil
 FROM python:3.11-slim
 
@@ -25,5 +27,4 @@ EXPOSE 7860
 
 # 9. Perintah untuk menjalankan aplikasi
 # Jalankan setup.sh untuk mengunduh model, LALU jalankan server Gunicorn.
-# Semua akan berjalan sebagai root, yang akan menyelesaikan masalah izin.
 CMD ["/bin/bash", "-c", "./setup.sh && gunicorn --bind 0.0.0.0:7860 --timeout 600 app:app"]
