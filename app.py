@@ -1,3 +1,4 @@
+# app.py (Versi Final dengan Pemuatan Model yang Benar)
 from flask import Flask, request, jsonify, send_from_directory
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
 import torch
@@ -64,7 +65,6 @@ def load_all_models():
             try:
                 tokenizer = AutoTokenizer.from_pretrained(model_path)
                 model = AutoModelForSequenceClassification.from_pretrained(model_path)
-                # PERBAIKAN: Langsung pindahkan model ke CPU saat dimuat
                 model.to(device)
                 model.eval()
                 models_cache[model_name] = (model, tokenizer)
@@ -78,7 +78,6 @@ def load_all_models():
 
 @app.route('/predict', methods=['POST'])
 def predict():
-    # Tambahkan logging untuk setiap langkah di dalam fungsi ini
     print("\n[LOG] Menerima permintaan di /predict")
     try:
         data = request.get_json()
@@ -128,13 +127,17 @@ def predict():
         return jsonify(all_predictions)
     except Exception as e:
         print(f"[FATAL ERROR] Terjadi error tak terduga di rute /predict:")
-        # PERBAIKAN: Cetak traceback error untuk debugging yang lebih detail
         traceback.print_exc()
         return jsonify({"error": "Kesalahan internal server."}), 500
 
 @app.route('/')
 def serve_index(): return send_from_directory('frontend', 'index.html')
 
+# --- PERBAIKAN UTAMA DI SINI ---
+# Panggil fungsi load_all_models() di sini, di luar blok if __name__ == '__main__'
+# Ini akan dieksekusi saat Gunicorn mengimpor file app.py
+load_all_models()
+
 if __name__ == '__main__':
-    load_all_models()
-    app.run(host="0.0.0.0", port=7860, debug=False)
+    # Blok ini sekarang hanya untuk menjalankan server secara lokal, bukan di Hugging Face
+    app.run(host="0.0.0.0", port=7860, debug=True)
