@@ -1,0 +1,18 @@
+# Python virtual environment
+venv/
+__pycache__/
+*.pyc
+.vscode/
+
+# Abaikan dataset mentah dan yang diproses
+datasets/
+
+# Abaikan hasil evaluasi
+results/
+
+# Abaikan SEMUA model lokal karena akan diunduh di server
+models/
+
+# File sistem operasi
+.DS_Store
+Thumbs.db

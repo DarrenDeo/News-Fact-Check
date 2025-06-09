@@ -1,0 +1,31 @@
+# 1. Gunakan base image Python yang stabil
+FROM python:3.11-slim
+
+# 2. Set direktori kerja di dalam container
+WORKDIR /app
+
+# 3. Jalankan perintah instalasi SEBAGAI ROOT terlebih dahulu
+# Instal dependensi sistem yang diperlukan (git)
+RUN apt-get update && apt-get install -y git
+
+# 4. Salin file requirements terlebih dahulu untuk caching
+COPY requirements.txt .
+
+# 5. Instal semua pustaka Python yang diperlukan
+RUN pip install --no-cache-dir --upgrade pip
+RUN pip install --no-cache-dir -r requirements.txt gunicorn
+
+# 6. Salin semua file proyek lainnya
+COPY . .
+
+# 7. Jadikan skrip setup bisa dieksekusi
+RUN chmod +x setup.sh
+
+# 8. Beri tahu Docker port mana yang akan didengarkan
+EXPOSE 7860
+
+# 9. Perintah untuk menjalankan aplikasi
+# Jalankan setup.sh untuk mengunduh model, LALU jalankan server Gunicorn
+# Kita tidak perlu lagi membuat pengguna atau mengubah izin folder /data
+# karena proses ini akan berjalan sebagai root di dalam Docker.
+CMD ["/bin/bash", "-c", "./setup.sh && gunicorn --bind 0.0.0.0:7860 --timeout 600 app:app"]
