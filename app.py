@@ -7,11 +7,13 @@ import re
 from scipy.stats import mode
 import requests
 from bs4 import BeautifulSoup
+import traceback # Impor untuk melacak error detail
 
+# --- 1. Inisialisasi Aplikasi Flask ---
 app = Flask(__name__, static_folder='frontend')
 
-# PERUBAHAN: Path model sekarang mengarah ke persistent storage (/data)
-MODELS_DIR = "/data/models"
+# --- 2. Konfigurasi dan Pemuatan Model ---
+MODELS_DIR = "/data/models" 
 MODEL_CONFIG = {
     "BERT": os.path.join(MODELS_DIR, "bert"),
     "RoBERTa": os.path.join(MODELS_DIR, "roberta"),
@@ -20,7 +22,9 @@ MODEL_CONFIG = {
 }
 
 models_cache = {}
-device = torch.device("cpu") # Gunakan CPU di server, karena hardware kita CPU
+# Di server Hugging Face (CPU), kita akan selalu menggunakan CPU.
+device = torch.device("cpu")
+print(f"Perangkat komputasi diatur ke: {device}")
 
 def scrape_news_from_url(url):
     try:
@@ -51,6 +55,7 @@ def clean_text_for_prediction(text_input):
     return text
 
 def load_all_models():
+    """Memuat semua model dan tokenizer ke memori dan secara eksplisit memindahkannya ke CPU."""
     print("*" * 50)
     print("Memuat semua model AI dari persistent storage...")
     for model_name, model_path in MODEL_CONFIG.items():
@@ -59,9 +64,11 @@ def load_all_models():
             try:
                 tokenizer = AutoTokenizer.from_pretrained(model_path)
                 model = AutoModelForSequenceClassification.from_pretrained(model_path)
+                # PERBAIKAN: Langsung pindahkan model ke CPU saat dimuat
+                model.to(device)
                 model.eval()
                 models_cache[model_name] = (model, tokenizer)
-                print(f"  > {model_name} berhasil dikonfigurasi.")
+                print(f"  > {model_name} berhasil dikonfigurasi dan dipindahkan ke CPU.")
             except Exception as e: print(f"  ERROR saat memuat model {model_name}: {e}")
         else:
             print(f"  PERINGATAN: Direktori model untuk {model_name} tidak ditemukan di {model_path}")
@@ -71,24 +78,31 @@ def load_all_models():
 
 @app.route('/predict', methods=['POST'])
 def predict():
+    # Tambahkan logging untuk setiap langkah di dalam fungsi ini
+    print("\n[LOG] Menerima permintaan di /predict")
     try:
         data = request.get_json()
         url_input = data.get('url', '')
+        print(f"[LOG] URL yang diterima: {url_input}")
         if not url_input or not url_input.strip(): return jsonify({"error": "URL tidak boleh kosong"}), 400
 
+        print("[LOG] Memulai proses scraping...")
         text_from_url, error_message = scrape_news_from_url(url_input)
         if error_message: return jsonify({"error": error_message}), 400
+        print("[LOG] Scraping berhasil.")
         
         cleaned_text = clean_text_for_prediction(text_from_url)
+        print("[LOG] Teks berhasil dibersihkan.")
         
         all_predictions = {}
         individual_preds_list = []
 
         for model_name, (model, tokenizer) in models_cache.items():
-            model.to(device)
+            print(f"[LOG] Melakukan prediksi dengan {model_name}...")
             try:
                 inputs = tokenizer.encode_plus(cleaned_text, add_special_tokens=True, max_length=256, padding='max_length', truncation=True, return_attention_mask=True, return_tensors='pt')
-                input_ids = inputs['input_ids'].to(device); attention_mask = inputs['attention_mask'].to(device)
+                input_ids = inputs['input_ids'].to(device)
+                attention_mask = inputs['attention_mask'].to(device)
                 with torch.no_grad():
                     outputs = model(input_ids, attention_mask=attention_mask)
                 probs = torch.nn.functional.softmax(outputs.logits, dim=-1)
@@ -96,20 +110,27 @@ def predict():
                 predicted_class = "Hoax" if predicted_class_idx.item() == 1 else "Fakta"
                 individual_preds_list.append(predicted_class_idx.item())
                 all_predictions[model_name] = {"prediction": predicted_class, "confidence": f"{confidence.item():.2%}"}
+                print(f"[LOG] Prediksi {model_name} berhasil: {predicted_class}")
             except Exception as e:
-                print(f"Error saat prediksi dengan {model_name}: {e}")
+                print(f"[ERROR] Prediksi dengan {model_name} gagal: {e}")
                 all_predictions[model_name] = {"prediction": "Error", "confidence": "N/A"}
 
         if individual_preds_list:
+            print("[LOG] Melakukan ensemble voting...")
             ensemble_vote_result = mode(np.array(individual_preds_list))
             final_prediction_idx = ensemble_vote_result.mode[0] if isinstance(ensemble_vote_result.mode, np.ndarray) else ensemble_vote_result.mode
             final_prediction = "Hoax" if final_prediction_idx == 1 else "Fakta"
             agreement = np.mean([p == final_prediction_idx for p in individual_preds_list])
             all_predictions["Bagging (Ensemble)"] = {"prediction": final_prediction, "confidence": f"{agreement:.2%}"}
+            print("[LOG] Ensemble voting selesai.")
 
+        print("[LOG] Mengirimkan hasil ke frontend.")
         return jsonify(all_predictions)
     except Exception as e:
-        print(f"[FATAL ERROR] /predict: {e}"); return jsonify({"error": "Kesalahan internal server."}), 500
+        print(f"[FATAL ERROR] Terjadi error tak terduga di rute /predict:")
+        # PERBAIKAN: Cetak traceback error untuk debugging yang lebih detail
+        traceback.print_exc()
+        return jsonify({"error": "Kesalahan internal server."}), 500
 
 @app.route('/')
 def serve_index(): return send_from_directory('frontend', 'index.html')
