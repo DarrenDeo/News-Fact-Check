@@ -1,8 +1,6 @@
-# src/train_bert.py
 import pandas as pd
 import torch
 from torch.utils.data import Dataset, DataLoader
-# Perubahan impor AdamW: AdamW sekarang diimpor dari torch.optim
 from transformers import BertTokenizerFast, BertForSequenceClassification, get_linear_schedule_with_warmup
 from torch.optim import AdamW # AdamW diimpor dari torch.optim
 from sklearn.metrics import accuracy_score, precision_recall_fscore_support
@@ -13,7 +11,7 @@ import numpy as np
 # --- Konfigurasi ---
 MODEL_NAME = "indobenchmark/indobert-base-p2"
 MAX_LEN = 256
-BATCH_SIZE = 8 # Turunkan jika GPU Anda kehabisan memori (misalnya ke 4 atau 2)
+BATCH_SIZE = 8 # Turunkan jika GPU kehabisan memori (misalnya ke 4 atau 2)
 EPOCHS = 3
 LEARNING_RATE = 2e-5 # Learning rate umum untuk fine-tuning BERT
 OUTPUT_DIR = "../models/bert"
