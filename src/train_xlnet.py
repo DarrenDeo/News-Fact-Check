@@ -1,4 +1,3 @@
-# src/train_xlnet.py
 import pandas as pd
 import torch
 from torch.utils.data import Dataset, DataLoader
@@ -42,7 +41,7 @@ class NewsDataset(Dataset):
             add_special_tokens=True,
             max_length=self.max_len,
             # XLNet menggunakan padding di sisi kiri secara default,
-            # tokenizer akan menanganinya, jadi kita tidak perlu mengubahnya di sini
+            # tokenizer akan menanganinya
             # untuk penggunaan klasifikasi standar.
             padding='max_length',
             truncation=True,
