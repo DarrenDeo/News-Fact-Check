@@ -1,11 +1,10 @@
-# src/preprocess.py
 import os
 import re
 import pandas as pd
 from sklearn.model_selection import train_test_split
 from tqdm import tqdm
 
-# --- Konfigurasi Path Berdasarkan Struktur Anda ---
+# --- Konfigurasi Path Berdasarkan Struktur ---
 BASE_PROJECT_DIR = ".."
 DATASETS_ROOT_DIR = os.path.join(BASE_PROJECT_DIR, "datasets")
 MERGED_DATA_DIR = os.path.join(DATASETS_ROOT_DIR, "merged_for_processing")
@@ -225,11 +224,6 @@ def map_label_universal(label_value, category_name):
     if category_name == "politics":
         if label_str_lower == "0" or label_str_lower == "0.0": return 0
         if label_str_lower == "1" or label_str_lower == "1.0": return 1
-        # Tambahkan pemetaan lain jika kolom 'hoax' di file politik Anda berisi string seperti "BENAR", "SALAH"
-        # Contoh:
-        # if "benar" in label_str_lower or "fakta" in label_str_lower : return 0
-        # if "salah" in label_str_lower or "hoax" in label_str_lower : return 1
-        # print(f"  DEBUG (politics map_label): Label tidak terpetakan: '{label_value}'")
 
     elif category_name in ["sports", "gossip"]:
         if label_str_lower == "0": return 0
@@ -241,7 +235,7 @@ def map_label_universal(label_value, category_name):
 
     elif category_name == "general":
         # Ekstrak label dari kolom title (yang sekarang ada di label_value)
-        if isinstance(label_value, str): # Pastikan label_value adalah string
+        if isinstance(label_value, str):
             # Gunakan label_str_original_case untuk memeriksa pola agar tidak terpengaruh oleh .lower() pada tag
             if re.search(r'\[\s*SALAH\s*\]|\(\s*SALAH\s*\)', label_str_original_case, flags=re.IGNORECASE):
                 return 1 # Hoax
@@ -387,9 +381,8 @@ def main_preprocess_all_categories(input_files_config, input_columns_config, out
     test_df.to_csv(os.path.join(output_dir_processed, "test.csv"), index=False)
     print(f"\nData train/val/test disimpan di '{output_dir_processed}'")
 
-# =============================================================================
-# 5. MAIN EXECUTION
-# =============================================================================
+
+    # MAIN EXECUTION
 if __name__ == "__main__":
     print("Memulai skrip pra-pemrosesan terpadu...")
     DATASET_INPUT_FILES["sports"] = merge_sports_datasets()
