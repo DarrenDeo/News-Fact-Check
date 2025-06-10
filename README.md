@@ -1,4 +1,4 @@
-## Proyek Pengecek Fakta Berita Berbasis AI
+## Pengecek Fakta Berita Berbasis AI
 
 Aplikasi ini dirancang untuk menganalisis keaslian sebuah berita yang disediakan melalui link URL. Sistem ini menggunakan lima metode AI yang berbeda untuk memberikan prediksi, yang kemudian digabungkan untuk menghasilkan keputusan akhir yang lebih andal.
 
