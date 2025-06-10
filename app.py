@@ -1,4 +1,3 @@
-# app.py
 from flask import Flask, request, jsonify, send_from_directory
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
 import torch
@@ -154,7 +153,7 @@ def predict():
 
         if individual_preds_list:
             ensemble_vote_result = mode(np.array(individual_preds_list))
-            # PERBAIKAN: Cara yang lebih aman untuk mendapatkan hasil dari `mode`
+            
             final_prediction_idx = ensemble_vote_result.mode[0] if isinstance(ensemble_vote_result.mode, np.ndarray) else ensemble_vote_result.mode
             
             final_prediction = "Hoax" if final_prediction_idx == 1 else "Fakta"
