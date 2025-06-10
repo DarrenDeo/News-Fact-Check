@@ -1,4 +1,3 @@
-# src/train_electra.py
 import pandas as pd
 import torch
 from torch.utils.data import Dataset, DataLoader
@@ -10,7 +9,6 @@ import os
 import numpy as np
 
 # --- Konfigurasi ---
-# Mengganti model ke "google/electra-base-discriminator" (multilingual) yang sangat stabil dan tersedia.
 MODEL_NAME = "google/electra-base-discriminator"
 # Alternatif model khusus Indonesia yang bisa dicoba jika tersedia:
 # "indolem/indoelectra-base-discriminator"
@@ -24,7 +22,7 @@ PROCESSED_DATA_DIR = "../datasets/processed"
 
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
-# --- Kelas Dataset Kustom (Sama seperti sebelumnya) ---
+# --- Kelas Dataset Kustom ---
 class NewsDataset(Dataset):
     def __init__(self, texts, labels, tokenizer, max_len):
         self.texts = texts
@@ -56,7 +54,7 @@ class NewsDataset(Dataset):
             'labels': torch.tensor(label, dtype=torch.long)
         }
 
-# --- Fungsi untuk Memuat Data (Sama seperti sebelumnya) ---
+# --- Fungsi untuk Memuat Data ---
 def load_data(file_path):
     try:
         df = pd.read_csv(file_path)
@@ -73,7 +71,7 @@ def load_data(file_path):
         print(f"ERROR saat memuat data dari {file_path}: {e}")
         return [], []
 
-# --- Fungsi Pelatihan per Epoch (Sama seperti sebelumnya) ---
+# --- Fungsi Pelatihan per Epoch ---
 def train_epoch(model, data_loader, optimizer, device, scheduler, n_examples):
     model = model.train()
     total_train_loss = 0
@@ -106,7 +104,7 @@ def train_epoch(model, data_loader, optimizer, device, scheduler, n_examples):
     avg_train_acc = total_train_correct.double() / n_examples
     return avg_train_acc, avg_train_loss
 
-# --- Fungsi Evaluasi (Sama seperti sebelumnya) ---
+# --- Fungsi Evaluasi ---
 def eval_model(model, data_loader, device, n_examples):
     model = model.eval()
     total_eval_loss = 0
