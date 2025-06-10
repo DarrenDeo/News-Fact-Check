@@ -1,4 +1,3 @@
-# src/train_roberta.py
 import pandas as pd
 import torch
 from torch.utils.data import Dataset, DataLoader
@@ -9,11 +8,7 @@ from tqdm.auto import tqdm
 import os
 import numpy as np
 
-# --- Konfigurasi ---
-# Model RoBERTa untuk bahasa Indonesia. Anda bisa mencari alternatif di Hugging Face Model Hub
-# jika model ini tidak optimal atau jika ada versi yang lebih baru/cocok.
-# Contoh: "flax-community/roberta-base-indonesian" atau "cahya/roberta-base-indonesian-522M"
-# Atau model multilingual seperti "xlm-roberta-base" jika dataset Anda memiliki banyak campuran bahasa.
+
 MODEL_NAME = "cahya/roberta-base-indonesian-522M" # Pilihan model RoBERTa Indonesia
 MAX_LEN = 256
 BATCH_SIZE = 8 # Sesuaikan berdasarkan VRAM GPU Anda (sama seperti BERT)
