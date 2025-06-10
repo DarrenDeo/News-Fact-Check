@@ -59,7 +59,7 @@
     </div>
 
     <script>
-        // --- DATA HASIL EVALUASI ANDA ---
+        // --- DATA HASIL EVALUASI ---
         const evaluationResults = [
             { "Model": "Bagging (Ensemble)", "Accuracy": 0.9507, "F1-score": 0.9504 },
             { "Model": "ELECTRA", "Accuracy": 0.9483, "F1-score": 0.9482 },
@@ -68,13 +68,13 @@
             { "Model": "RoBERTa", "Accuracy": 0.9356, "F1-score": 0.9355 }
         ];
 
-        // --- Render Tabel dan Diagram (Tidak ada perubahan di sini) ---
+        // --- Render Tabel dan Diagram ---
         const table = document.getElementById('metricsTable');
         table.innerHTML = `<thead class="bg-gray-50"><tr><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Model</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">F1-Score</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Akurasi</th></tr></thead><tbody class="bg-white divide-y divide-gray-200">${evaluationResults.map(r=>`<tr><td class="px-4 py-3 whitespace-nowrap text-sm font-semibold text-gray-900">${r.Model}</td><td class="px-4 py-3 whitespace-nowrap text-sm text-gray-600">${r['F1-score'].toFixed(4)}</td><td class="px-4 py-3 whitespace-nowrap text-sm text-gray-600">${r.Accuracy.toFixed(4)}</td></tr>`).join('')}</tbody>`;
         const ctx = document.getElementById('f1ScoreChart').getContext('2d');
         const f1ScoreChart = new Chart(ctx, {type: 'bar', data: {labels: evaluationResults.map(r => r.Model).reverse(), datasets: [{label: 'F1-Score (Weighted)', data: evaluationResults.map(r => r['F1-score']).reverse(), backgroundColor: ['rgba(167, 139, 250, 0.7)','rgba(96, 165, 250, 0.7)','rgba(52, 211, 153, 0.7)','rgba(251, 191, 36, 0.7)','rgba(248, 113, 113, 0.7)'].reverse(), borderColor: ['rgba(167, 139, 250, 1)','rgba(96, 165, 250, 1)','rgba(52, 211, 153, 1)','rgba(251, 191, 36, 1)','rgba(248, 113, 113, 1)'].reverse(), borderWidth: 1, borderRadius: 4}]}, options: {indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: {legend: {display: false}, tooltip: {callbacks: {label: (c) => ` F1-Score: ${c.raw.toFixed(4)}`}}}, scales: {x: {min: 0.9, title: {display: true, text: 'F1-Score (Weighted)'}}}}});
 
-        // --- Logika Interaktif Aplikasi (Diperbarui dengan Penanganan Error yang Lebih Baik) ---
+        // --- Logika Interaktif Aplikasi ---
         const checkButton = document.getElementById('checkFactButton');
         const newsUrlInput = document.getElementById('newsURL');
         const resultArea = document.getElementById('result-area');
@@ -111,9 +111,9 @@
                     body: JSON.stringify({ url: url })
                 });
 
-                // PERBAIKAN: Periksa status response SEBELUM mencoba parse JSON
+                // Periksa status response SEBELUM mencoba parse JSON
                 if (!response.ok) {
-                    // Coba baca error dari body sebagai JSON, jika gagal, gunakan status text
+                    // membaca error dari body sebagai JSON, jika gagal, gunakan status text
                     let errorMessage = `HTTP error! Status: ${response.status} ${response.statusText}`;
                     try {
                         const errorData = await response.json();
