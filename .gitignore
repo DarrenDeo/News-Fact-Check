@@ -1,0 +1,21 @@
+# Python virtual environment
+venv/
+
+# File cache Python
+__pycache__/
+*.pyc
+
+# File-file yang dibuat oleh IDE
+.vscode/
+
+# Folder model yang dilatih (SANGAT BESAR, JANGAN DIUNGGAH)
+models/
+
+# Folder yang dibuat otomatis oleh skrip
+results/
+datasets/merged_for_processing/
+datasets/processed/
+
+# File sistem operasi
+.DS_Store
+Thumbs.db

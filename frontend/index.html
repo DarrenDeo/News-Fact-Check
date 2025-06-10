@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aplikasi Pengecek Fakta Berita AI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; scroll-behavior: smooth; }
+        .result-card { border-left-width: 4px; transition: all 0.3s ease-in-out; }
+        .hoax { border-color: #ef4444; background-color: #fee2e2; }
+        .fakta { border-color: #22c55e; background-color: #dcfce7; }
+        .loader { border: 4px solid #f3f3f3; border-radius: 50%; border-top: 4px solid #3b82f6; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 20px auto; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .model-vote-card { transition: opacity 0.5s ease-in; }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800">
+    <div class="container mx-auto p-4 sm:p-6 lg:p-8 max-w-5xl">
+        <header class="mb-10 text-center">
+            <h1 class="text-4xl sm:text-5xl font-bold text-blue-600">Pengecek Fakta Berita AI</h1>
+            <p class="text-gray-600 mt-3 text-lg">Analisis keaslian berita dari sebuah link menggunakan model AI terlatih.</p>
+        </header>
+
+        <!-- Input Section -->
+        <div id="main-app" class="bg-white p-6 rounded-lg shadow-lg mb-8">
+            <h2 class="text-2xl font-semibold mb-5 text-gray-700">Analisis Berita Baru</h2>
+            <div class="mb-4">
+                <label for="newsURL" class="block text-sm font-medium text-gray-700 mb-2">Masukkan Link Berita:</label>
+                <input type="url" id="newsURL" class="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow" placeholder="Contoh: https://www.situsberita.com/judul-artikel...">
+            </div>
+            <button id="checkFactButton" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-md transition-all duration-150 ease-in-out shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:bg-gray-400">
+                <span id="button-text">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline-block mr-2 -mt-1" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" /></svg>
+                    Cek Keaslian Berita
+                </span>
+                <span id="button-loader" class="hidden">Menganalisis...</span>
+            </button>
+            <!-- Result Area -->
+            <div id="result-area" class="mt-6 hidden">
+                <div id="loader" class="loader hidden"></div>
+                <div id="result-content" class="hidden">
+                    <!-- Hasil akan ditampilkan di sini -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Comparison Section -->
+        <div class="bg-white p-6 rounded-lg shadow-lg">
+            <h2 class="text-2xl font-semibold mb-2 text-gray-700">Perbandingan Kinerja Model</h2>
+            <p class="text-gray-500 mb-6">Hasil evaluasi dari kelima metode AI pada data uji.</p>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+                <div class="w-full h-80"><canvas id="f1ScoreChart"></canvas></div>
+                <div class="overflow-x-auto"><table id="metricsTable" class="min-w-full divide-y divide-gray-200 border"></table></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- DATA HASIL EVALUASI ANDA ---
+        const evaluationResults = [
+            { "Model": "Bagging (Ensemble)", "Accuracy": 0.9507, "F1-score": 0.9504 },
+            { "Model": "ELECTRA", "Accuracy": 0.9483, "F1-score": 0.9482 },
+            { "Model": "BERT", "Accuracy": 0.9466, "F1-score": 0.9465 },
+            { "Model": "XLNet", "Accuracy": 0.9455, "F1-score": 0.9454 },
+            { "Model": "RoBERTa", "Accuracy": 0.9356, "F1-score": 0.9355 }
+        ];
+
+        // --- Render Tabel dan Diagram (Tidak ada perubahan di sini) ---
+        const table = document.getElementById('metricsTable');
+        table.innerHTML = `<thead class="bg-gray-50"><tr><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Model</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">F1-Score</th><th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Akurasi</th></tr></thead><tbody class="bg-white divide-y divide-gray-200">${evaluationResults.map(r=>`<tr><td class="px-4 py-3 whitespace-nowrap text-sm font-semibold text-gray-900">${r.Model}</td><td class="px-4 py-3 whitespace-nowrap text-sm text-gray-600">${r['F1-score'].toFixed(4)}</td><td class="px-4 py-3 whitespace-nowrap text-sm text-gray-600">${r.Accuracy.toFixed(4)}</td></tr>`).join('')}</tbody>`;
+        const ctx = document.getElementById('f1ScoreChart').getContext('2d');
+        const f1ScoreChart = new Chart(ctx, {type: 'bar', data: {labels: evaluationResults.map(r => r.Model).reverse(), datasets: [{label: 'F1-Score (Weighted)', data: evaluationResults.map(r => r['F1-score']).reverse(), backgroundColor: ['rgba(167, 139, 250, 0.7)','rgba(96, 165, 250, 0.7)','rgba(52, 211, 153, 0.7)','rgba(251, 191, 36, 0.7)','rgba(248, 113, 113, 0.7)'].reverse(), borderColor: ['rgba(167, 139, 250, 1)','rgba(96, 165, 250, 1)','rgba(52, 211, 153, 1)','rgba(251, 191, 36, 1)','rgba(248, 113, 113, 1)'].reverse(), borderWidth: 1, borderRadius: 4}]}, options: {indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: {legend: {display: false}, tooltip: {callbacks: {label: (c) => ` F1-Score: ${c.raw.toFixed(4)}`}}}, scales: {x: {min: 0.9, title: {display: true, text: 'F1-Score (Weighted)'}}}}});
+
+        // --- Logika Interaktif Aplikasi (Diperbarui dengan Penanganan Error yang Lebih Baik) ---
+        const checkButton = document.getElementById('checkFactButton');
+        const newsUrlInput = document.getElementById('newsURL');
+        const resultArea = document.getElementById('result-area');
+        const loader = document.getElementById('loader');
+        const resultContent = document.getElementById('result-content');
+        const buttonText = document.getElementById('button-text');
+        const buttonLoader = document.getElementById('button-loader');
+        
+        checkButton.addEventListener('click', async () => {
+            const url = newsUrlInput.value.trim();
+            if (url === '') {
+                alert('Silakan masukkan link berita terlebih dahulu.');
+                return;
+            }
+
+            try {
+                new URL(url);
+            } catch (_) {
+                alert('Format link tidak valid. Pastikan menggunakan http:// atau https://');
+                return;
+            }
+
+            resultArea.style.display = 'block';
+            resultContent.style.display = 'none';
+            loader.style.display = 'block';
+            checkButton.disabled = true;
+            buttonText.classList.add('hidden');
+            buttonLoader.classList.remove('hidden');
+
+            try {
+                const response = await fetch('/predict', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url: url })
+                });
+
+                // PERBAIKAN: Periksa status response SEBELUM mencoba parse JSON
+                if (!response.ok) {
+                    // Coba baca error dari body sebagai JSON, jika gagal, gunakan status text
+                    let errorMessage = `HTTP error! Status: ${response.status} ${response.statusText}`;
+                    try {
+                        const errorData = await response.json();
+                        errorMessage = errorData.error || errorMessage;
+                    } catch (e) {
+                        // Biarkan errorMessage yang sudah ada jika body bukan JSON
+                    }
+                    throw new Error(errorMessage);
+                }
+                
+                // Jika response.ok, maka kita aman untuk parse JSON
+                const data = await response.json();
+                displayResults(data);
+
+            } catch (error) {
+                console.error('Error:', error);
+                resultContent.innerHTML = `<div class="result-card hoax p-4 rounded-r-md"><h3 class="font-bold text-lg text-red-800">Terjadi Kesalahan</h3><p class="text-sm text-red-700">Gagal memproses link. Pastikan link valid dan dapat diakses publik. Error: ${error.message}</p></div>`;
+                resultContent.style.display = 'block';
+            } finally {
+                loader.style.display = 'none';
+                checkButton.disabled = false;
+                buttonText.classList.remove('hidden');
+                buttonLoader.classList.add('hidden');
+            }
+        });
+        
+        // Fungsi displayResults tidak perlu diubah
+        function displayResults(data) {
+            let finalResultHtml = '';
+            let individualResultsHtml = '';
+            const ensembleResult = data['Bagging (Ensemble)'];
+            if (ensembleResult) {
+                const isHoax = ensembleResult.prediction === 'Hoax';
+                const cardClass = isHoax ? 'hoax' : 'fakta';
+                const title = isHoax ? 'Prediksi Akhir: KEMUNGKINAN BESAR HOAX' : 'Prediksi Akhir: KEMUNGKINAN BESAR FAKTA';
+                const description = isHoax ? 'Berdasarkan voting mayoritas model, konten ini memiliki ciri disinformasi.' : 'Berdasarkan voting mayoritas model, konten ini kemungkinan besar faktual.';
+                const confidence = ensembleResult.confidence;
+                finalResultHtml = `<div class="result-card ${cardClass} p-5 rounded-md mb-6 shadow-md"><h3 class="font-bold text-xl">${title}</h3><p class="text-base mt-2">${description}</p><p class="text-sm mt-3"><strong>Tingkat Kesepakatan Model (Confidence):</strong> ${confidence}</p></div>`;
+            }
+            individualResultsHtml += '<h4 class="text-lg font-semibold mb-3 text-gray-600">Hasil per Model:</h4><div class="grid grid-cols-1 md:grid-cols-2 gap-4">';
+            for (const modelName in data) {
+                if (modelName !== 'Bagging (Ensemble)') {
+                    const result = data[modelName];
+                    const isHoax = result.prediction === 'Hoax';
+                    const icon = isHoax ? '<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 text-red-600" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" /></svg>' : '<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 text-green-600" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" /></svg>';
+                    individualResultsHtml += `<div class="model-vote-card border border-gray-200 p-3 rounded-lg shadow-sm"><div class="font-semibold text-gray-800 flex items-center">${icon} ${modelName}</div><div class="text-sm text-gray-500 pl-7">Prediksi: <span class="font-medium ${isHoax ? 'text-red-700' : 'text-green-700'}">${result.prediction}</span></div><div class="text-sm text-gray-500 pl-7">Confidence: <span class="font-medium">${result.confidence}</span></div></div>`;
+                }
+            }
+            individualResultsHtml += '</div>';
+            resultContent.innerHTML = finalResultHtml + individualResultsHtml;
+            resultContent.style.display = 'block';
+        }
+    </script>
+</body>
+</html>
+```

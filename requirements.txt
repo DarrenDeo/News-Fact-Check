@@ -1,0 +1,24 @@
+# Core ML & Data Processing
+# Pustaka utama untuk deep learning, model transformer, dan manipulasi data
+torch
+torchvision
+torchaudio
+transformers[sentencepiece]
+pandas
+numpy
+scikit-learn
+tqdm
+datasets
+
+# Web Scraping & Backend Server
+# Diperlukan untuk menjalankan app.py (server) dan mengambil konten dari link berita
+Flask
+requests
+beautifulsoup4
+
+# Evaluation & Utilities
+# Untuk evaluasi (voting), membaca file Excel, dan membuat diagram
+scipy
+openpyxl
+matplotlib
+seaborn
