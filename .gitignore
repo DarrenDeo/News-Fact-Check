@@ -1,9 +1,11 @@
 # Python virtual environment
 venv/
 
-# File cache Python
+# Abaikan cache Python dan file terkompilasi
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
 
 # File-file yang dibuat oleh IDE
 .vscode/
@@ -19,3 +21,6 @@ datasets/processed/
 # File sistem operasi
 .DS_Store
 Thumbs.db
+
+# Abaikan file .tar yang kita buat
+*.tar
