@@ -1,0 +1,48 @@
+name: CI - Docker build
+
+on:
+  push:
+    branches: [ Dockerize-Version ]
+  pull_request:
+    branches: [ Dockerize-Version ]
+  workflow_dispatch: {}
+
+jobs:
+  test-and-build:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Checkout source code
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      # 2. Setup Python (sesuai image: python:3.9-slim)
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.9"
+
+      # 3. Cache pip (biar install dependency lebih cepat di run berikutnya)
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      # 4. Install dependencies dari requirements.txt
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      # 5. Cek syntax Python (app.py + src kalau ada)
+      - name: Static Python syntax check
+        run: |
+          python -m compileall app.py src || python -m compileall app.py
+
+      # 6. Build Docker image (pastikan Dockerfile + entrypoint.sh valid)
+      - name: Build Docker image
+        run: |
+          docker build -t news-fact-check .

@@ -99,6 +99,10 @@ def load_all_models():
 # --- 3. Perbarui Rute API untuk Prediksi dengan Penanganan Error ---
 @app.route('/predict', methods=['POST'])
 def predict():
+    if not models_cache:
+        return jsonify({
+            "error": "Tidak ada model yang aktif di server. Pastikan folder models/ di dalam container berisi subfolder bert, roberta, electra, dan xlnet."
+        }), 500
     try:
         if not request.is_json:
             return jsonify({"error": "Request must be JSON"}), 400

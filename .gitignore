@@ -24,3 +24,5 @@ Thumbs.db
 
 # Abaikan file .tar yang kita buat
 *.tar
+
+*.gz
