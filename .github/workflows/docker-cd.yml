@@ -1,0 +1,54 @@
+name: CD - Publish Docker image to GHCR
+
+on:
+  push:
+    branches: [ Dockerize-Version ]
+  workflow_dispatch: {}
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      packages: write
+
+    env:
+      IMAGE_NAME: news-fact-check
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build Docker image
+        run: |
+          OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          IMAGE="ghcr.io/$OWNER/${{ env.IMAGE_NAME }}"
+          SHA_TAG="${{ github.sha }}"
+          BRANCH_TAG=$(echo "${GITHUB_REF_NAME}" | tr '[:upper:]' '[:lower:]' | tr '/' '-')
+
+          echo "Building image $IMAGE with tags: $SHA_TAG, $BRANCH_TAG, latest"
+
+          docker build \
+            -t "$IMAGE:$SHA_TAG" \
+            -t "$IMAGE:$BRANCH_TAG" \
+            -t "$IMAGE:latest" \
+            .
+
+      - name: Push Docker image
+        run: |
+          OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          IMAGE="ghcr.io/$OWNER/${{ env.IMAGE_NAME }}"
+          SHA_TAG="${{ github.sha }}"
+          BRANCH_TAG=$(echo "${GITHUB_REF_NAME}" | tr '[:upper:]' '[:lower:]' | tr '/' '-')
+
+          docker push "$IMAGE:$SHA_TAG"
+          docker push "$IMAGE:$BRANCH_TAG"
+          docker push "$IMAGE:latest"
