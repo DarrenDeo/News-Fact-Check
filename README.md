@@ -1,163 +1,193 @@
-## Proyek Pengecek Fakta Berita Berbasis AI
+# News Fact Check
 
-Aplikasi ini dirancang untuk menganalisis keaslian sebuah berita yang disediakan melalui link URL. Sistem ini menggunakan lima metode AI yang berbeda untuk memberikan prediksi, yang kemudian digabungkan untuk menghasilkan keputusan akhir yang lebih andal.
-
-## Fitur Utama
-
--   **Analisis Berita via Link:** Mengekstrak konten artikel secara otomatis dari link URL yang diberikan pengguna.
--   **Multi-Model Analysis:** Menggunakan 5 metode AI untuk analisis yang komprehensif:
-    1.  **BERT**
-    2.  **RoBERTa**
-    3.  **ELECTRA**
-    4.  **XLNet**
-    5.  **Bagging (Ensemble Voting)**
--   **Hasil Terperinci:** Menampilkan prediksi (Fakta/Hoax) dan skor kepercayaan dari setiap model secara individual.
--   **Keputusan Akhir Ensemble:** Memberikan kesimpulan akhir berdasarkan voting mayoritas dari semua model untuk meningkatkan akurasi dan keandalan.
--   **Dasbor Kinerja:** Menyajikan visualisasi perbandingan F1-score dan akurasi dari setiap model dalam bentuk tabel dan diagram.
+Aplikasi pengecek fakta berita berbasis AI. Masukkan **URL berita**, sistem akan mengekstrak konten artikel, melakukan inferensi dengan empat model Transformer (BERT, RoBERTa, ELECTRA, XLNet), lalu menggabungkannya dengan **Bagging (Ensemble Voting)**. Hasil berisi label **Fakta/Hoax** dan **confidence** per model serta hasil akhir ensemble. Antarmuka web sederhana (HTML/Tailwind/Chart.js) disertakan.
 
 ---
 
-## Arsitektur & Alur Kerja Proyek
+## Fitur
 
-Proyek ini dibangun dengan alur kerja yang terstruktur, mulai dari persiapan data mentah hingga penyajian hasil analisis melalui aplikasi web.
-
-**Penjelasan Alur Kerja:**
-
-1.  **Persiapan Data:** Berbagai dataset mentah dari berbagai kategori digabungkan, dibersihkan, dan diproses oleh skrip `src/preprocess.py` menjadi satu set data terpadu yang siap digunakan.
-2.  **Pelatihan Model:** Data terpadu dibagi menjadi set data latih, validasi, dan uji. Data latih dan validasi digunakan untuk melakukan *fine-tuning* pada empat model Transformer (BERT, RoBERTa, ELECTRA, XLNet). Setiap model yang telah dilatih disimpan ke dalam folder `models/`.
-3.  **Evaluasi & Ensemble:** Menggunakan data uji, skrip `src/evaluate.py` memuat keempat model terlatih untuk mengevaluasi kinerjanya. Prediksi dari keempat model digabungkan menggunakan metode *majority voting* untuk menghasilkan prediksi **Bagging (Ensemble)**. Laporan kinerja, tabel perbandingan, dan visualisasi dihasilkan pada tahap ini.
-4.  **Aplikasi Web:** Sebuah server backend (Flask) memuat semua model terlatih ke dalam memori. Antarmuka pengguna (frontend) menerima input link berita dari pengguna, mengirimkannya ke backend untuk dianalisis, dan kemudian menampilkan hasil prediksi dari setiap model serta hasil akhir dari ensemble.
+* **Analisis via URL**: scraping judul & isi artikel, pembersihan teks, dan klasifikasi.
+* **Multi-model + Ensemble**: BERT, RoBERTa, ELECTRA, XLNet + Bagging (mayoritas).
+* **Visualisasi**: Tabel F1/Accuracy dan chart perbandingan.
+* **Siap jalan lintas platform**: Windows, macOS, Linux/WSL melalui container runtime (Docker/Podman).
+* **Otomatis unduh model**: model AI diambil dari GitHub Releases saat container pertama kali dijalankan.
 
 ---
 
-## Visualisasi Data & Hasil
-
-Skrip `evaluate.py` secara otomatis menghasilkan beberapa visualisasi untuk membantu memahami dataset dan kinerja model. Semua gambar disimpan di dalam folder `results/`, yang dapat Anda periksa setelah menjalankan evaluasi. Contoh visualisasi yang dihasilkan meliputi:
-
-* **Distribusi Kelas:** Menunjukkan perbandingan jumlah berita Fakta dan Hoax.
-* **Distribusi Panjang Teks:** Histogram yang menunjukkan sebaran jumlah kata dalam berita.
-* **Perbandingan Metrik Kinerja:** Diagram batang yang membandingkan metrik kunci dari kelima metode AI.
-* **Confusion Matrix:** Dihasilkan untuk setiap model untuk melihat secara detail performa klasifikasinya.
-
-## Struktur Proyek
+## Arsitektur Singkat
 
 ```
-NEWS-FACK-CHECK/
-├── app.py                  # Backend server Flask
-├── datasets/               # Folder untuk semua dataset (mentah)
+Frontend (index.html) ──► Flask API (/predict)
+      ▲                        │
+      └── GET /                │ 4× model (bert/roberta/electra/xlnet)
+                                └─ Ensemble (majority voting)
+```
+
+* **Backend**: `app.py` (Flask) memuat model dari `/app/models/*`.
+* **Frontend**: `frontend/index.html` (Tailwind + Chart.js).
+* **Model**: diunduh otomatis sebagai `models.tar.gz` dari GitHub Releases → diekstrak ke `/app/models`.
+
+---
+
+## Prasyarat
+
+* **Docker Desktop** (Windows/macOS) atau **Docker Engine** (Linux/WSL Ubuntu).
+
+Internet dibutuhkan saat **run pertama** untuk mengunduh model.
+
+---
+
+## Cara Pakai (Paling Cepat)
+
+> Image publik tersedia di GHCR:
+> `ghcr.io/darrendeo/news-fact-check:latest`
+
+### 1) Jalankan langsung
+
+```bash
+docker pull ghcr.io/darrendeo/news-fact-check:latest
+
+# Run pertama akan mengunduh & mengekstrak model ke /app/models
+docker run --rm -p 5000:5000 ghcr.io/darrendeo/news-fact-check:latest
+```
+
+Buka browser: **[http://localhost:5000](http://localhost:5000)**
+
+### 2) Simpan model agar tidak unduh ulang (disarankan)
+
+**Named volume**:
+
+```bash
+docker volume create newsf_models
+docker run --rm -p 5000:5000 -v newsf_models:/app/models \
+  ghcr.io/darrendeo/news-fact-check:latest
+```
+
+**Bind mount** (agar terlihat di folder lokal):
+
+```bash
+mkdir -p models
+docker run --rm -p 5000:5000 -v "$(pwd)/models:/app/models" \
+  ghcr.io/darrendeo/news-fact-check:latest
+```
+
+> **Catatan**: jika package GHCR private, lakukan `docker login ghcr.io` dengan token GitHub yang memiliki `read:packages`.
+
+---
+
+
+## Build & Run dari Kode Sumber (opsional)
+
+Jika ingin membangun image sendiri:
+
+```bash
+# dari root repo
+docker build -t news-fact-check .
+docker run --rm -p 5000:5000 -v newsf_models:/app/models news-fact-check
+```
+
+Atau tanpa container (dev lokal):
+
+```bash
+python -m venv venv
+source venv/bin/activate        # Windows: .\venv\Scripts\activate
+pip install -r requirements.txt
+
+# pastikan folder models/ berisi:
+# models/{bert,roberta,electra,xlnet} dengan file tokenizer & model masing-masing
+python app.py
+# buka http://127.0.0.1:5000
+```
+
+---
+
+## Endpoint
+
+* `GET /` → halaman UI.
+* `POST /predict`
+  Body:
+
+  ```json
+  { "url": "https://alamat/berita" }
+  ```
+
+  Respons ringkas:
+
+  ```json
+  {
+    "BERT": {"prediction": "Fakta", "confidence": "96.12%"},
+    "RoBERTa": {"prediction": "Fakta", "confidence": "95.33%"},
+    "ELECTRA": {"prediction": "Hoax",  "confidence": "91.05%"},
+    "XLNet": {"prediction": "Fakta", "confidence": "93.40%"},
+    "Bagging (Ensemble)": {"prediction": "Fakta", "confidence": "75.00%"}
+  }
+  ```
+
+---
+
+## Struktur Proyek (inti)
+
+```
+.
+├── app.py               # Flask API (scrape, clean, infer 4 model + ensemble)
 ├── frontend/
-│   └── index.html          # Antarmuka pengguna (UI) aplikasi
-├── models/                 # (Folder ini diabaikan oleh Git, dibuat saat training)
-├── results/                # Hasil evaluasi, diagram, dan laporan
-├── src/                    # Folder untuk semua skrip Python
-│   ├── preprocess.py
-│   ├── train_bert.py
-│   ├── ... (skrip training lainnya) ...
-│   └── evaluate.py
-├── .gitignore              # Mengabaikan file/folder yang tidak perlu di-upload
-├── requirements.txt        # Daftar pustaka Python yang diperlukan
-└── README.md               # File ini
+│   └── index.html       # UI (Tailwind + Chart.js)
+├── entrypoint.sh        # cek /app/models, unduh & ekstrak models.tar.gz, start app
+├── requirements.txt     # torch, transformers, flask, requests, bs4, dll.
+├── Dockerfile
+└── .github/workflows/
+    ├── docker-ci.yml    # CI: compile check + docker build
+    └── docker-cd.yml    # CD: build & push ke GHCR (latest/branch/sha)
 ```
 
-## Arsitektur Model AI
-
-Proyek ini memanfaatkan beberapa model Transformer pre-trained yang telah di-fine-tune pada dataset berita berbahasa Indonesia.
-
-| Metode              | Model Pre-trained yang Digunakan                   | Keterangan                                      |
-| ------------------ | -------------------------------------------------- | ----------------------------------------------- |
-| **BERT** | `indobenchmark/indobert-base-p2`                   | Model BERT yang dioptimalkan untuk Bahasa Indonesia.  |
-| **RoBERTa** | `cahya/roberta-base-indonesian-522M`             | Varian RoBERTa untuk Bahasa Indonesia.            |
-| **ELECTRA** | `google/electra-base-discriminator`                | Model multilingual yang efisien dan berkinerja tinggi. |
-| **XLNet** | `xlnet-base-cased`                                 | Model multilingual dengan arsitektur autoregressive. |
-| **Bagging** | Ensemble Voting                                    | Menggabungkan prediksi dari 4 model di atas.      |
+> **Model** tidak di-commit. Diunduh otomatis saat run pertama.
+> Pastikan struktur hasil ekstraksi:
+> `/app/models/{bert,roberta,electra,xlnet}`
 
 ---
 
-## Instalasi & Pengaturan
+## CI/CD
 
-Untuk menjalankan proyek ini di mesin lokal Anda, ikuti langkah-langkah berikut.
+* **CI** (`.github/workflows/docker-ci.yml`):
+  Trigger pada push/PR ke branch yang ditentukan (mis. `Dockerize-Version`) atau manual.
+  Langkah: checkout → Python compile check → **docker build**.
 
-### Prasyarat
-
--   Python 3.8 atau versi lebih baru.
--   `pip` dan `venv` untuk manajemen pustaka.
--   Git untuk mengkloning repositori.
--   **GPU NVIDIA dengan CUDA:** Sangat direkomendasikan untuk mempercepat proses pelatihan model.
-
-### Langkah-langkah Instalasi
-
-1.  **Clone Repositori**
-    ```bash
-    git clone https://github.com/DarrenDeo/News-Fact-Check.git
-    cd News-Fact-Check
-    ```
-
-2.  **Buat dan Aktifkan Virtual Environment**
-    ```bash
-    # Buat venv
-    python -m venv venv
-
-    # Aktifkan venv
-    # Windows
-    .\venv\Scripts\activate
-    # macOS/Linux
-    source venv/bin/activate
-    ```
-
-3.  **Instal Semua Pustaka yang Diperlukan**
-    ```bash
-    pip install -r requirements.txt
-    ```
-
-## Cara Penggunaan
-
-Proyek ini memiliki alur kerja dari persiapan data hingga menjalankan aplikasi web.
-
-### Langkah 1: Siapkan Dataset Mentah
-
--   Karena dataset berukuran besar, Anda perlu mengunduhnya secara manual dari sumber yang disebutkan dan menempatkannya di dalam folder `datasets/` dengan struktur folder yang sesuai (misalnya, `datasets/politics/`, `datasets/sports/`, dll.).
-
-### Langkah 2: Pra-pemrosesan Data
-
--   Skrip ini akan menggabungkan dataset mentah Anda, membersihkan teks, dan membaginya menjadi set data latih, validasi, dan uji.
--   Pastikan konfigurasi di dalam `src/preprocess.py` sudah sesuai dengan file Anda.
--   Jalankan dari direktori `src/`:
-    ```bash
-    python preprocess.py
-    ```
-
-### Langkah 3: Latih Model AI
-
--   Jalankan setiap skrip pelatihan satu per satu dari direktori `src/`. Proses ini akan memakan waktu dan membutuhkan GPU.
-    ```bash
-    python train_bert.py
-    python train_roberta.py
-    python train_electra.py
-    python train_xlnet.py
-    ```
--   Model yang berhasil dilatih akan disimpan di dalam folder `models/`.
-
-### Langkah 4: Evaluasi Semua Model
-
--   Setelah semua model dilatih, jalankan skrip evaluasi.
--   Jalankan dari direktori `src/`:
-    ```bash
-    python evaluate.py
-    ```
--   Hasil evaluasi akan disimpan di dalam folder `results/`.
-
-### Langkah 5: Jalankan Aplikasi Web
-
--   Arahkan terminal Anda ke **direktori root** proyek.
--   Jalankan server Flask:
-    ```bash
-    python app.py
-    ```
--   Tunggu hingga server berjalan dan semua model dimuat.
--   Buka browser Anda dan kunjungi alamat: **`http://127.0.0.1:5000`**.
--   Anda sekarang dapat memasukkan link berita untuk dianalisis.
+* **CD** (`.github/workflows/docker-cd.yml`):
+  Login ke **ghcr.io** memakai `GITHUB_TOKEN`, build image, tag (`latest`, `<branch>`, `<sha>`), **push** ke GHCR:
+  `ghcr.io/darrendeo/news-fact-check`.
 
 ---
+
+## Troubleshooting
+
+* **Model selalu diunduh ulang**
+  Jalankan container dengan volume/mount ke `/app/models` (lihat “Simpan model” di atas).
+
+* **Struktur model salah (mis. muncul `/app/models/models/bert`)**
+  Kosongkan volume lama, jalankan ulang agar ekstraksi menghasilkan:
+  `/app/models/bert`, `/app/models/roberta`, dst.
+
+* **`/predict` error 500 / hasil kosong**
+
+  * Cek log container: pastikan semua subfolder model ada & terbaca.
+  * Pastikan URL berita bisa diakses publik (sebagian situs memblok scraper).
+  * Coba ulangi dengan volume baru (untuk memastikan model tidak korup saat ekstraksi).
+
+* **WSL: `permission denied /var/run/docker.sock`**
+
+  * `sudo docker ps` untuk tes.
+  * Tambahkan user ke grup docker: `sudo usermod -aG docker $USER` lalu **restart terminal**.
+  * Aktifkan **WSL Integration** di Docker Desktop untuk distro yang dipakai.
+
+* **Menjalankan `docker` dari distro `docker-desktop`**
+  Gunakan **PowerShell**/**CMD** atau WSL distro kamu (Ubuntu), bukan shell `docker-desktop`.
+
+* **GitHub Actions: `No space left on device`**
+  Pipeline sudah disederhanakan (install deps hanya saat `docker build`). Hindari langkah ganda yang menginstal paket berat di host runner.
+
+---
+
+
 ## Lisensi
 
-Proyek ini dilisensikan di bawah Lisensi MIT.
+MIT. Silakan gunakan dan modifikasi dengan tetap menyertakan lisensi.
