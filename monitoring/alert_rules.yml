@@ -1,0 +1,21 @@
+groups:
+  - name: nfc-alerts
+    rules:
+      - alert: HighPredictLatencyP95
+        expr: |
+          histogram_quantile(0.95, sum(rate(nfc_http_request_latency_seconds_bucket{endpoint="/predict"}[2m])) by (le)) > 2
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "P95 latency /predict tinggi"
+          description: "P95 latency > 2 detik selama 1 menit."
+
+      - alert: HighErrorRate
+        expr: |
+          sum(rate(nfc_http_requests_total{endpoint="/predict",http_status=~"5.."}[2m])) > 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Error 5xx terdeteksi di /predict"

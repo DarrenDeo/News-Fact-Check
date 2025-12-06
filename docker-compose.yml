@@ -1,0 +1,53 @@
+services:
+  app:
+    build: .
+    container_name: news-fact-check
+    ports:
+      - "5000:5000"
+    environment:
+      - MODELS_DIR=/data/models
+      - MODEL_RELEASE_TAG=v1.0.0-models
+      - MODEL_ASSET=models.tar.gz
+    volumes:
+      - newsf_models:/app/models
+      - nfc_data:/data
+    restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/alert_rules.yml:/etc/prometheus/alert_rules.yml:ro
+    depends_on:
+      - app
+      - node_exporter
+      - cadvisor
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+
+  node_exporter:
+    image: prom/node-exporter:latest
+    container_name: node_exporter
+    restart: unless-stopped
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:latest
+    container_name: cadvisor
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+
+volumes:
+  newsf_models:
+  nfc_data:

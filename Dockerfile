@@ -7,8 +7,11 @@ FROM python:3.11-slim
 WORKDIR /app
 
 # 3. Instal dependensi sistem yang diperlukan (git dan git-lfs) SEBAGAI ROOT
-RUN apt-get update && apt-get install -y git git-lfs && git-lfs install
+RUN apt-get update && apt-get install -y git git-lfs && git-lfs install \
+    && rm -rf /var/lib/apt/lists/*
 
+RUN apt-get update && apt-get install -y --no-install-recommends curl \
+    && rm -rf /var/lib/apt/lists/*    
 # 4. Salin file requirements terlebih dahulu untuk caching
 COPY requirements.txt .
 
@@ -23,9 +26,9 @@ COPY . .
 RUN chmod +x setup.sh
 
 # 8. Beri tahu Docker port mana yang akan didengarkan
-EXPOSE 7860
+EXPOSE 5000
 
 # 9. Perintah untuk menjalankan aplikasi
 # Jalankan setup.sh untuk mengunduh model, LALU jalankan server Gunicorn.
 # Semua akan berjalan sebagai root, yang akan menyelesaikan masalah izin.
-CMD ["/bin/bash", "-c", "./setup.sh && gunicorn --bind 0.0.0.0:7860 --timeout 600 --preload app:app"]
+CMD ["/bin/bash", "-c", "./setup.sh && gunicorn --bind 0.0.0.0:5000 --timeout 600 --preload app:app"]

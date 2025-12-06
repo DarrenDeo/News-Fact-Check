@@ -1,4 +1,7 @@
 from flask import Flask, request, jsonify, send_from_directory
+from flask import g
+from prometheus_client import Counter, Histogram, Gauge, generate_latest, CONTENT_TYPE_LATEST
+import time
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
 import torch
 import numpy as np
@@ -12,8 +15,46 @@ import traceback # Impor untuk melacak error detail
 # --- 1. Inisialisasi Aplikasi Flask ---
 app = Flask(__name__, static_folder='frontend')
 
+from prometheus_flask_exporter import PrometheusMetrics
+
+metrics = PrometheusMetrics(app)
+
+# Optional tapi bagus untuk label standar
+metrics.info("news_fact_check_app_info", "App info", version="1.0.0")
+
+
+# --- Prometheus Metrics (Aplikasi) ---
+REQUEST_COUNT = Counter(
+    "nfc_http_requests_total",
+    "Total HTTP requests",
+    ["method", "endpoint", "http_status"]
+)
+
+REQUEST_LATENCY = Histogram(
+    "nfc_http_request_latency_seconds",
+    "HTTP request latency in seconds",
+    ["endpoint"]
+)
+
+PREDICT_COUNT = Counter(
+    "nfc_predict_requests_total",
+    "Total /predict requests",
+    ["result"]  # Fakta/Hoax/Error
+)
+
+SCRAPE_LATENCY = Histogram(
+    "nfc_scrape_latency_seconds",
+    "Latency for scraping news content"
+)
+
+MODELS_LOADED = Gauge(
+    "nfc_models_loaded",
+    "Number of models successfully loaded"
+)
+
+
 # --- 2. Konfigurasi dan Pemuatan Model ---
-MODELS_DIR = "/data/models" 
+MODELS_DIR = os.getenv("MODELS_DIR", "/data/models")
 MODEL_CONFIG = {
     "BERT": os.path.join(MODELS_DIR, "bert"),
     "RoBERTa": os.path.join(MODELS_DIR, "roberta"),
@@ -27,6 +68,7 @@ device = torch.device("cpu")
 print(f"Perangkat komputasi diatur ke: {device}")
 
 def scrape_news_from_url(url):
+    scrape_start = time.time()
     try:
         headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'}
         response = requests.get(url, headers=headers, timeout=10)
@@ -46,6 +88,14 @@ def scrape_news_from_url(url):
         if not full_text.strip() or full_text.strip() == ".": return None, "Gagal mengekstrak konten artikel."
         return full_text, None
     except Exception as e: return None, f"Gagal mengakses atau memproses link: {e}"
+    except Exception as e: return None, f"Terjadi error saat scraping: {e}"
+    finally:
+        # catat durasi scraping (bahkan saat error)
+        try:
+            SCRAPE_LATENCY.observe(time.time() - scrape_start)
+        except Exception:
+            pass
+
 
 def clean_text_for_prediction(text_input):
     if not isinstance(text_input, str): return ""
@@ -78,7 +128,24 @@ def load_all_models():
             print(f"  [WARNING] Direktori model untuk {model_name} tidak ditemukan di {model_path}")
     print("\nProses pemuatan semua model selesai.")
     print(f"Total model yang berhasil dimuat: {len(models_cache)}")
+    MODELS_LOADED.set(len(models_cache))
     print("*" * 50)
+
+@app.before_request
+def start_timer():
+    g.start_time = time.time()
+
+@app.after_request
+def record_request_data(response):
+    try:
+        endpoint = request.path
+        latency = time.time() - getattr(g, "start_time", time.time())
+
+        REQUEST_LATENCY.labels(endpoint).observe(latency)
+        REQUEST_COUNT.labels(request.method, endpoint, str(response.status_code)).inc()
+    except Exception:
+        pass
+    return response
 
 
 @app.route('/predict', methods=['POST'])
@@ -126,14 +193,27 @@ def predict():
             final_prediction = "Hoax" if final_prediction_idx == 1 else "Fakta"
             agreement = np.mean([p == final_prediction_idx for p in individual_preds_list])
             all_predictions["Bagging (Ensemble)"] = {"prediction": final_prediction, "confidence": f"{agreement:.2%}"}
+            PREDICT_COUNT.labels(final_prediction).inc()
             print("[PREDICT] Ensemble voting selesai.")
 
         print("[PREDICT] Mengirimkan hasil ke frontend.")
         return jsonify(all_predictions)
     except Exception as e:
+        PREDICT_COUNT.labels("Error").inc()
         print(f"[FATAL ERROR] Terjadi error tak terduga di rute /predict:")
         traceback.print_exc()
         return jsonify({"error": "Kesalahan internal server."}), 500
+    
+@app.route("/metrics")
+def metrics():
+    return generate_latest(), 200, {"Content-Type": CONTENT_TYPE_LATEST}
+
+@app.route("/healthz")
+def healthz():
+    return jsonify({
+        "status": "ok",
+        "models_loaded": len(models_cache)
+    })
 
 @app.route('/')
 def serve_index(): return send_from_directory('frontend', 'index.html')

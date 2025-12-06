@@ -22,3 +22,5 @@ scipy
 openpyxl
 matplotlib
 seaborn
+prometheus_client
+prometheus-flask-exporter
