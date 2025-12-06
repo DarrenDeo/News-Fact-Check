@@ -1,176 +1,306 @@
----
-title: News Fact Check
-emoji: 📰
-colorFrom: blue
-colorTo: indigo
-sdk: docker
-sdk_version: 4.25.0
-app_file: app.py
-pinned: false
----
+# News Fact Check — Observability + Docker
 
+Aplikasi **Pengecek Fakta Berita Berbasis AI** untuk menganalisis keaslian berita dari **link URL** menggunakan beberapa model Transformer dan **ensemble voting**. Branch **`observability-docker`** menambahkan **containerization** dan **stack observability** agar aplikasi bisa dijalankan konsisten lintas OS sekaligus mudah dipantau performanya.
 
+Versi ini disiapkan untuk kebutuhan demo/presentasi dan assignment yang menuntut:
 
-## Proyek Pengecek Fakta Berita Berbasis AI
-
-Aplikasi ini dirancang untuk menganalisis keaslian sebuah berita yang disediakan melalui link URL. Sistem ini menggunakan lima metode AI yang berbeda untuk memberikan prediksi, yang kemudian digabungkan untuk menghasilkan keputusan akhir yang lebih andal.
-
-## Fitur Utama
-
--   **Analisis Berita via Link:** Mengekstrak konten artikel secara otomatis dari link URL yang diberikan pengguna.
--   **Multi-Model Analysis:** Menggunakan 5 metode AI untuk analisis yang komprehensif:
-    1.  **BERT**
-    2.  **RoBERTa**
-    3.  **ELECTRA**
-    4.  **XLNet**
-    5.  **Bagging (Ensemble Voting)**
--   **Hasil Terperinci:** Menampilkan prediksi (Fakta/Hoax) dan skor kepercayaan dari setiap model secara individual.
--   **Keputusan Akhir Ensemble:** Memberikan kesimpulan akhir berdasarkan voting mayoritas dari semua model untuk meningkatkan akurasi dan keandalan.
--   **Dasbor Kinerja:** Menyajikan visualisasi perbandingan F1-score dan akurasi dari setiap model dalam bentuk tabel dan diagram.
+* Containerization
+* Cross-platform testing
+* Monitoring & dashboarding
 
 ---
 
-## Arsitektur & Alur Kerja Proyek
+## Fitur
 
-Proyek ini dibangun dengan alur kerja yang terstruktur, mulai dari persiapan data mentah hingga penyajian hasil analisis melalui aplikasi web.
+### A. Fitur Aplikasi
 
-**Penjelasan Alur Kerja:**
+* Analisis berita melalui URL.
+* Multi-model inference:
 
-1.  **Persiapan Data:** Berbagai dataset mentah dari berbagai kategori digabungkan, dibersihkan, dan diproses oleh skrip `src/preprocess.py` menjadi satu set data terpadu yang siap digunakan.
-2.  **Pelatihan Model:** Data terpadu dibagi menjadi set data latih, validasi, dan uji. Data latih dan validasi digunakan untuk melakukan *fine-tuning* pada empat model Transformer (BERT, RoBERTa, ELECTRA, XLNet). Setiap model yang telah dilatih disimpan ke dalam folder `models/`.
-3.  **Evaluasi & Ensemble:** Menggunakan data uji, skrip `src/evaluate.py` memuat keempat model terlatih untuk mengevaluasi kinerjanya. Prediksi dari keempat model digabungkan menggunakan metode *majority voting* untuk menghasilkan prediksi **Bagging (Ensemble)**. Laporan kinerja, tabel perbandingan, dan visualisasi dihasilkan pada tahap ini.
-4.  **Aplikasi Web:** Sebuah server backend (Flask) memuat semua model terlatih ke dalam memori. Antarmuka pengguna (frontend) menerima input link berita dari pengguna, mengirimkannya ke backend untuk dianalisis, dan kemudian menampilkan hasil prediksi dari setiap model serta hasil akhir dari ensemble.
+  * BERT
+  * RoBERTa
+  * ELECTRA
+  * XLNet
+* **Ensemble majority voting** untuk prediksi akhir.
+* Menampilkan hasil per model + confidence.
+
+### B. Fitur DevOps
+
+* **Dockerfile** untuk build image aplikasi.
+* **Docker Compose** untuk menjalankan keseluruhan stack.
+* **Persistensi model** menggunakan Docker volume.
+* **Setup model dari GitHub Releases** untuk stabilitas, konsistensi versi, dan mengurangi ketergantungan download runtime.
+
+### C. Fitur Observability
+
+* **Prometheus**: scraping dan penyimpanan metrik time-series.
+* **Grafana**: visualisasi dashboard.
+* **cAdvisor**: metrik container.
+* **Node Exporter**: metrik sistem host (paling optimal di Linux/WSL).
 
 ---
 
-## Visualisasi Data & Hasil
+## Arsitektur Singkat
 
-Skrip `evaluate.py` secara otomatis menghasilkan beberapa visualisasi untuk membantu memahami dataset dan kinerja model. Semua gambar disimpan di dalam folder `results/`, yang dapat Anda periksa setelah menjalankan evaluasi. Contoh visualisasi yang dihasilkan meliputi:
+Satu network Docker Compose berisi service:
 
-* **Distribusi Kelas:** Menunjukkan perbandingan jumlah berita Fakta dan Hoax.
-* **Distribusi Panjang Teks:** Histogram yang menunjukkan sebaran jumlah kata dalam berita.
-* **Perbandingan Metrik Kinerja:** Diagram batang yang membandingkan metrik kunci dari kelima metode AI.
-* **Confusion Matrix:** Dihasilkan untuk setiap model untuk melihat secara detail performa klasifikasinya.
+* `app` (Flask + Gunicorn)
+* `prometheus`
+* `grafana`
+* `cadvisor`
+* `node_exporter`
+
+Prometheus melakukan scrape:
+
+* `app:5000/metrics`
+* `cadvisor:8080/metrics`
+* `node_exporter:9100/metrics`
+
+Grafana menggunakan Prometheus sebagai data source.
+
+---
 
 ## Struktur Proyek
 
 ```
-NEWS-FACK-CHECK/
-├── app.py                  # Backend server Flask
-├── datasets/               # Folder untuk semua dataset (mentah)
+News-Fact-Check/
+├── app.py
 ├── frontend/
-│   └── index.html          # Antarmuka pengguna (UI) aplikasi
-├── models/                 # (Folder ini diabaikan oleh Git, dibuat saat training)
-├── results/                # Hasil evaluasi, diagram, dan laporan
-├── src/                    # Folder untuk semua skrip Python
-│   ├── preprocess.py
-│   ├── train_bert.py
-│   ├── ... (skrip training lainnya) ...
-│   └── evaluate.py
-├── .gitignore              # Mengabaikan file/folder yang tidak perlu di-upload
-├── requirements.txt        # Daftar pustaka Python yang diperlukan
-└── README.md               # File ini
+│   └── index.html
+├── src/
+│   └── ... (pipeline data & training)
+├── monitoring/
+│   ├── prometheus.yml
+│   └── alert_rules.yml
+├── Dockerfile
+├── docker-compose.yml
+├── setup.sh
+├── requirements.txt
+├── .dockerignore
+├── .gitignore
+└── README.md
 ```
 
-## Arsitektur Model AI
+---
 
-Proyek ini memanfaatkan beberapa model Transformer pre-trained yang telah di-fine-tune pada dataset berita berbahasa Indonesia.
+## Prasyarat
 
-| Metode              | Model Pre-trained yang Digunakan                   | Keterangan                                      |
-| ------------------ | -------------------------------------------------- | ----------------------------------------------- |
-| **BERT** | `indobenchmark/indobert-base-p2`                   | Model BERT yang dioptimalkan untuk Bahasa Indonesia.  |
-| **RoBERTa** | `cahya/roberta-base-indonesian-522M`             | Varian RoBERTa untuk Bahasa Indonesia.            |
-| **ELECTRA** | `google/electra-base-discriminator`                | Model multilingual yang efisien dan berkinerja tinggi. |
-| **XLNet** | `xlnet-base-cased`                                 | Model multilingual dengan arsitektur autoregressive. |
-| **Bagging** | Ensemble Voting                                    | Menggabungkan prediksi dari 4 model di atas.      |
+* Docker Desktop (Windows/macOS) atau Docker Engine (Linux).
+* Docker Compose v2.
+* Koneksi internet untuk menarik image dan **mengunduh model release (sekali di awal)**.
 
 ---
 
-## Instalasi & Pengaturan
+## Quick Start
 
-Untuk menjalankan proyek ini di mesin lokal Anda, ikuti langkah-langkah berikut.
+1. Clone repo dan checkout branch:
 
-### Prasyarat
+```bash
+git clone https://github.com/DarrenDeo/News-Fact-Check.git
+cd News-Fact-Check
+git checkout observability-docker
+```
 
--   Python 3.8 atau versi lebih baru.
--   `pip` dan `venv` untuk manajemen pustaka.
--   Git untuk mengkloning repositori.
--   **GPU NVIDIA dengan CUDA:** Sangat direkomendasikan untuk mempercepat proses pelatihan model.
+2. Build dan jalankan semua service:
 
-### Langkah-langkah Instalasi
+```bash
+docker compose up -d --build
+```
 
-1.  **Clone Repositori**
-    ```bash
-    git clone https://github.com/DarrenDeo/News-Fact-Check.git
-    cd News-Fact-Check
-    ```
+3. Akses service:
 
-2.  **Buat dan Aktifkan Virtual Environment**
-    ```bash
-    # Buat venv
-    python -m venv venv
-
-    # Aktifkan venv
-    # Windows
-    .\venv\Scripts\activate
-    # macOS/Linux
-    source venv/bin/activate
-    ```
-
-3.  **Instal Semua Pustaka yang Diperlukan**
-    ```bash
-    pip install -r requirements.txt
-    ```
-
-## Cara Penggunaan
-
-Proyek ini memiliki alur kerja dari persiapan data hingga menjalankan aplikasi web.
-
-### Langkah 1: Siapkan Dataset Mentah
-
--   Karena dataset berukuran besar, Anda perlu mengunduhnya secara manual dari sumber yang disebutkan dan menempatkannya di dalam folder `datasets/` dengan struktur folder yang sesuai (misalnya, `datasets/politics/`, `datasets/sports/`, dll.).
-
-### Langkah 2: Pra-pemrosesan Data
-
--   Skrip ini akan menggabungkan dataset mentah Anda, membersihkan teks, dan membaginya menjadi set data latih, validasi, dan uji.
--   Pastikan konfigurasi di dalam `src/preprocess.py` sudah sesuai dengan file Anda.
--   Jalankan dari direktori `src/`:
-    ```bash
-    python preprocess.py
-    ```
-
-### Langkah 3: Latih Model AI
-
--   Jalankan setiap skrip pelatihan satu per satu dari direktori `src/`. Proses ini akan memakan waktu dan membutuhkan GPU.
-    ```bash
-    python train_bert.py
-    python train_roberta.py
-    python train_electra.py
-    python train_xlnet.py
-    ```
--   Model yang berhasil dilatih akan disimpan di dalam folder `models/`.
-
-### Langkah 4: Evaluasi Semua Model
-
--   Setelah semua model dilatih, jalankan skrip evaluasi.
--   Jalankan dari direktori `src/`:
-    ```bash
-    python evaluate.py
-    ```
--   Hasil evaluasi akan disimpan di dalam folder `results/`.
-
-### Langkah 5: Jalankan Aplikasi Web
-
--   Arahkan terminal Anda ke **direktori root** proyek.
--   Jalankan server Flask:
-    ```bash
-    python app.py
-    ```
--   Tunggu hingga server berjalan dan semua model dimuat.
--   Buka browser Anda dan kunjungi alamat: **`http://127.0.0.1:5000`**.
--   Anda sekarang dapat memasukkan link berita untuk dianalisis.
+| Service    | URL                                            |
+| ---------- | ---------------------------------------------- |
+| App        | [http://localhost:5000](http://localhost:5000) |
+| Prometheus | [http://localhost:9090](http://localhost:9090) |
+| Grafana    | [http://localhost:3000](http://localhost:3000) |
+| cAdvisor   | [http://localhost:8080](http://localhost:8080) |
 
 ---
-## Lisensi
 
-Proyek ini dilisensikan di bawah Lisensi MIT.
+## Cara Kerja Model Setup dari GitHub Releases
+
+Saat container `app` start, skrip `setup.sh` akan:
+
+1. Mengecek apakah folder model sudah lengkap di volume.
+2. Jika belum ada atau belum lengkap, file model diunduh dari **GitHub Releases** lalu diekstrak.
+3. Jika sudah lengkap, proses download akan di-skip.
+
+Konfigurasi default yang umum dipakai:
+
+* `MODEL_RELEASE_TAG=v1.0.0-models`
+* `MODEL_ASSET=models.tar.gz`
+* `MODELS_DIR=/data/models`
+
+Kamu bisa override via environment variables jika diperlukan:
+
+```bash
+MODEL_RELEASE_TAG=v1.0.0-models MODEL_ASSET=models.tar.gz docker compose up -d --build
+```
+
+---
+
+## Volume & Persistensi
+
+Compose menyiapkan volume untuk menjaga model tidak hilang saat restart:
+
+* volume models (untuk `/data/models`)
+* volume data/cache (jika dikonfigurasi)
+
+Reset total:
+
+```bash
+docker compose down -v
+```
+
+---
+
+## Verifikasi Aplikasi
+
+1. Buka `http://localhost:5000`.
+2. Masukkan link berita.
+3. Pastikan:
+
+   * hasil tiap model tampil
+   * hasil ensemble tampil
+
+> Catatan: first run bisa lebih lama karena proses download & extract model.
+
+---
+
+## Verifikasi Monitoring
+
+### 1) Pastikan semua container aktif
+
+```bash
+docker compose ps
+```
+
+### 2) Cek target Prometheus
+
+Buka `http://localhost:9090` → **Status → Targets**.
+
+Target yang idealnya **UP**:
+
+* `news-fact-check-app`
+* `cadvisor`
+* `node_exporter`
+
+> Di Windows, `node_exporter` bisa saja tidak sekomplet Linux. Untuk demo metrik host, WSL Ubuntu biasanya lebih mulus.
+
+### 3) Query cepat untuk validasi
+
+Di Prometheus Graph atau Grafana Explore:
+
+* Status target:
+
+  ```
+  up
+  ```
+
+* CPU container:
+
+  ```
+  rate(container_cpu_usage_seconds_total[1m])
+  ```
+
+* Memory container:
+
+  ```
+  container_memory_working_set_bytes
+  ```
+
+---
+
+## Grafana Setup
+
+1. Buka `http://localhost:3000`.
+
+2. Login default (jika belum diubah):
+
+   * user: `admin`
+   * password: `admin`
+
+3. Tambahkan Prometheus Data Source:
+
+   * Connections → Data sources → Prometheus
+   * URL: `http://prometheus:9090`
+   * Save & Test
+
+---
+
+## Dashboard yang Direkomendasikan
+
+### A. Container Metrics (cAdvisor)
+
+Panel yang umum dan relevan untuk tugas:
+
+* Container CPU Usage
+* Container Memory Working Set
+* Top Memory Hungry Containers
+* Container Count
+
+### B. App Metrics
+
+Jika app sudah expose `/metrics`:
+
+* Request rate
+* Error rate (4xx/5xx)
+* Latency (p95/p99) jika histogram tersedia
+
+Jika panel App Metrics masih kosong:
+
+* pastikan endpoint `http://app:5000/metrics` bisa di-scrape oleh Prometheus
+* cek job `news-fact-check-app` di `monitoring/prometheus.yml`
+
+---
+
+## Cross-Platform Testing
+
+Stack ini ditujukan agar **image dan compose yang sama** dapat dijalankan di:
+
+* Windows (Docker Desktop)
+* macOS
+* Linux (termasuk WSL Ubuntu)
+
+Untuk laporan tugas, urutan dokumentasi yang disarankan:
+
+1. Screenshot `docker compose ps`.
+2. Screenshot halaman app `localhost:5000` dengan hasil prediksi.
+3. Screenshot Prometheus Targets (App/cAdvisor/node_exporter).
+4. Screenshot Grafana dashboard Container Metrics.
+5. (Opsional) Screenshot Explore dengan query `up`.
+
+---
+
+## Troubleshooting Cepat
+
+### A) `localhost:5000` belum muncul
+
+* Cek logs app:
+
+  ```bash
+  docker compose logs -f app
+  ```
+* Biasanya karena `setup.sh` masih download/extract model.
+
+### B) Prometheus target app DOWN
+
+* Pastikan target di `monitoring/prometheus.yml` menggunakan service name:
+
+  * `app:5000`
+
+### C) Build terasa lambat
+
+* Pastikan `.dockerignore` mengabaikan folder besar seperti:
+
+  * `datasets/`
+  * `models/`
+  * `venv/` atau `.venv/`
+
+---
+
+## Catatan
+
+* Model yang tersedia di GitHub Releases adalah artifact siap deploy untuk kebutuhan demonstrasi.
+* Pipeline training dan evaluasi tetap tersedia di folder `src/` jika ingin retraining.
